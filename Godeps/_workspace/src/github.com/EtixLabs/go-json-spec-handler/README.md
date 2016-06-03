@@ -31,34 +31,36 @@ type User struct {
   Name string `json:"name" valid:"alphanum"`
 }
 
-// example http.HandlerFunc
+// example http.HandlerFunc for PATCH /users/1
 func PatchUser(w http.ResponseWriter, r *http.Request) {
-  user := &User{}
 
   // performs Specification checks against the request
-  object, err := jsh.ParseObject(*http.Request)
+  object, err := jsh.ParseObject(r)
   if err != nil {
+    // jsh returns API friendly errors, that are easy to respond with
     jsh.Send(w, r, err)
     return
   }
 
   // use object.ID to look up user/do business logic
-
+  user := &User{}
+  
   // unmarshal data into relevant internal types if govalidator passes, otherwise
   // return the pre-formatted HTTP 422 error to signify how the input failed
-  err = object.Unmarshal("user", user)
+  err = object.Unmarshal("users", user)
   if err != nil {
     jsh.Send(w, r, err)
     return
   }
 
-  // modify your internal type
+  // modify your resource object
   user.Name = "Bob"
 
-  // repackage and send the JSONAPI object
+  // repackage and send the updated resource as a response
   err = object.Marshal(user)
   if err != nil {
     jsh.Send(w, r, err)
+    return
   }
 
   jsh.Send(w, r, object)

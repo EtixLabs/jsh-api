@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/derekdowling/go-json-spec-handler"
+	"github.com/EtixLabs/go-json-spec-handler"
 )
 
 // Action performs an outbound GET /resource/:id/action request

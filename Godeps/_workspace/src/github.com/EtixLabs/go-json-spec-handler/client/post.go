@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/derekdowling/go-json-spec-handler"
+	"github.com/EtixLabs/go-json-spec-handler"
 )
 
 // Post allows a user to make an outbound POST /resources request:

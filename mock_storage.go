@@ -4,7 +4,7 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/derekdowling/go-json-spec-handler"
+	"github.com/EtixLabs/go-json-spec-handler"
 	"golang.org/x/net/context"
 )
 

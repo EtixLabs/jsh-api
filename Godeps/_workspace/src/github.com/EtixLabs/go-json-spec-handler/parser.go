@@ -49,7 +49,7 @@ func ParseObject(r *http.Request) (*Object, *Error) {
 	}
 
 	if !document.HasData() {
-		return nil, nil
+		return nil, TopLevelError("data")
 	}
 
 	object := document.First()
@@ -115,7 +115,7 @@ func (p *Parser) Document(payload io.ReadCloser, mode DocumentMode) (*Document, 
 
 	decodeErr := json.NewDecoder(payload).Decode(document)
 	if decodeErr != nil {
-		return nil, ISE(fmt.Sprintf("Error parsing JSON Document: %s", decodeErr.Error()))
+		return nil, BadRequestError("Invalid JSON Document", decodeErr.Error())
 	}
 
 	// If the document has data, validate against specification

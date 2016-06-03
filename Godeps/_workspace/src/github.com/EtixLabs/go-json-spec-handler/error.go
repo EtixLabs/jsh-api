@@ -83,12 +83,13 @@ http://jsonapi.org/format/#error-objects
 	jsh.Send(w, r, error)
 */
 type Error struct {
-	Title  string `json:"title"`
-	Detail string `json:"detail"`
 	Status int    `json:"status,string"`
+	Title  string `json:"title,omitempty"`
+	Detail string `json:"detail,omitempty"`
 	Source struct {
-		Pointer string `json:"pointer"`
-	} `json:"source"`
+		Pointer   string `json:"pointer,omitempty"`
+		Parameter string `json:"parameter,omitempty"`
+	} `json:"source,omitempty"`
 	ISE string `json:"-"`
 }
 
@@ -111,7 +112,7 @@ func (e *Error) Error() string {
 }
 
 /*
-Validate ensures that the an error meets all JSON API criteria.
+Validate ensures that the error meets all JSON API criteria.
 */
 func (e *Error) Validate(r *http.Request, response bool) *Error {
 
@@ -148,6 +149,33 @@ func ISE(internalMessage string) *Error {
 	}
 }
 
+// BadRequestError is a convenience function to return a 400 Bad Request response.
+func BadRequestError(msg string, detail string) *Error {
+	return &Error{
+		Title:  msg,
+		Detail: detail,
+		Status: http.StatusBadRequest,
+	}
+}
+
+// TopLevelError is used whenever the client sends a JSON payload with a missing top-level field.
+func TopLevelError(field string) *Error {
+	err := &Error{
+		Detail: fmt.Sprintf("Missing `%s` at document's top level", strings.ToLower(field)),
+		Status: 422,
+	}
+
+	// NOTE: Here we should point to the top-level of the document (""),
+	// but as it is also the empty string value it would be ignored by marshalling.
+	// Instead we point to “/” even if it is an appropriate reference to
+	// the string `"some value"` in the request document `{"": "some value"}`.
+	// The detail message however eliminates the misunderstanding by specifying
+	// the name of the missing field.
+	err.Source.Pointer = "/"
+
+	return err
+}
+
 /*
 InputError creates a properly formatted HTTP Status 422 error with an appropriate
 user safe message. The parameter "attribute" will format err.Source.Pointer to be
@@ -166,12 +194,37 @@ func InputError(msg string, attribute string) *Error {
 	return err
 }
 
+/*
+ParameterError creates a properly formatted HTTP Status 400 error with an appropriate
+user safe message. The err.Source.Parameter field will be set to the parameter "param".
+*/
+func ParameterError(msg string, param string) *Error {
+	err := &Error{
+		Title:  "Invalid Query Parameter",
+		Detail: msg,
+		Status: http.StatusBadRequest,
+	}
+
+	// Assign this after the fact, easier to do
+	err.Source.Parameter = strings.ToLower(param)
+
+	return err
+}
+
 // SpecificationError is used whenever the Client violates the JSON API Spec
 func SpecificationError(detail string) *Error {
 	return &Error{
 		Title:  "JSON API Specification Error",
 		Detail: detail,
 		Status: http.StatusNotAcceptable,
+	}
+}
+
+// ForbiddenError is used whenever an attempt to do a forbidden operation is made.
+func ForbiddenError(msg string) *Error {
+	return &Error{
+		Title:  msg,
+		Status: http.StatusForbidden,
 	}
 }
 

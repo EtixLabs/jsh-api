@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 
-	"github.com/derekdowling/go-json-spec-handler"
+	"github.com/EtixLabs/go-json-spec-handler"
 )
 
 func mockObjectResponse(object *jsh.Object) (*http.Response, error) {

@@ -3,7 +3,7 @@ package jshapi
 import (
 	"net/http"
 
-	"github.com/derekdowling/go-json-spec-handler"
+	"github.com/EtixLabs/go-json-spec-handler"
 	"github.com/derekdowling/go-stdlogger"
 	"golang.org/x/net/context"
 )

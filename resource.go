@@ -12,8 +12,8 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/derekdowling/go-json-spec-handler"
-	"github.com/derekdowling/jsh-api/store"
+	"github.com/EtixLabs/go-json-spec-handler"
+	"github.com/EtixLabs/jsh-api/store"
 )
 
 const (
