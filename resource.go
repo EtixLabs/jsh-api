@@ -26,6 +26,9 @@ const (
 	patRoot = ""
 )
 
+// EnableClientGeneratedIDs is an option that allows consumers to allow for client generated IDs.
+var EnableClientGeneratedIDs bool
+
 /*
 Resource holds the necessary state for creating a REST API endpoint for a
 given resource type. Will be accessible via `/<type>`.
@@ -253,6 +256,11 @@ func (res *Resource) postHandler(ctx context.Context, w http.ResponseWriter, r *
 	parsedObject, parseErr := jsh.ParseObject(r)
 	if parseErr != nil && reflect.ValueOf(parseErr).IsNil() == false {
 		SendHandler(ctx, w, r, parseErr)
+		return
+	}
+
+	if !EnableClientGeneratedIDs && parsedObject.ID != "" {
+		SendHandler(ctx, w, r, jsh.ForbiddenError("Client-generated IDs are unsupported"))
 		return
 	}
 
