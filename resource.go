@@ -19,9 +19,10 @@ import (
 const (
 	post    = "POST"
 	get     = "GET"
-	list    = "LIST"
 	delete  = "DELETE"
 	patch   = "PATCH"
+	head    = "HEAD"
+	options = "OPTIONS"
 	patID   = "/:id"
 	patRoot = ""
 )
@@ -117,8 +118,10 @@ func (res *Resource) CRUD(storage store.CRUD) {
 // It provides a handler that sends a 405 response for methods contained in the disallow parameter.
 // Since GET is always allowed, the supported parameters are POST,PATCH,DELETE.
 func (res *Resource) PartialCRUD(storage store.CRUD, disallow string) {
+	res.Options(patRoot)
 	res.List(storage.List, true)
 	res.Post(storage.Save, !strings.Contains(disallow, post))
+	res.Options(patID)
 	res.Get(storage.Get, true)
 	res.Patch(storage.Update, !strings.Contains(disallow, patch))
 	res.Delete(storage.Delete, !strings.Contains(disallow, delete))
@@ -141,16 +144,16 @@ func (res *Resource) Action(action string, storage store.Action, allow bool) {
 	res.addRoute(post, matcher, allow)
 }
 
-// Get registers a `GET /resource/:id` handler for the resource
-func (res *Resource) Get(storage store.Get) {
+// Options registers a `OPTIONS /resource` handler for the resource.
+func (res *Resource) Options(pattern string) {
 	res.HandleFuncC(
-		pat.Get(patID),
+		pat.Options(pattern),
 		func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-			res.getHandler(ctx, w, r, storage)
+			res.optionsHandler(ctx, w, r)
 		},
 	)
 
-	res.addRoute(get, patID)
+	res.addRoute(options, pattern, true)
 }
 
 // Post registers a `POST /resource` handler for the resource.
@@ -301,6 +304,11 @@ func (res *Resource) notAllowedHandler(ctx context.Context, w http.ResponseWrite
 	w.Header().Add("Content-Type", jsh.ContentType)
 	w.WriteHeader(http.StatusMethodNotAllowed)
 
+// OPTIONS
+func (res *Resource) optionsHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Allow", res.allowHeader(ctx, r))
+	w.Header().Add("Content-Type", jsh.ContentType)
+	w.WriteHeader(http.StatusOK)
 }
 
 // POST /resources
