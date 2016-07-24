@@ -98,23 +98,35 @@ Registers handlers for:
 	PATCH  /resource/:id
 */
 func (res *Resource) CRUD(storage store.CRUD) {
-	res.Get(storage.Get)
-	res.Patch(storage.Update)
-	res.Post(storage.Save)
-	res.List(storage.List)
-	res.Delete(storage.Delete)
+	res.PartialCRUD(storage, "")
 }
 
-// Post registers a `POST /resource` handler with the resource
-func (res *Resource) Post(storage store.Save) {
-	res.HandleFuncC(
-		pat.Post(patRoot),
-		func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-			res.postHandler(ctx, w, r, storage)
-		},
-	)
+// PartialCRUD registers all CRUD routes with OPTIONS and HEAD support.
+// It provides a handler that sends a 405 response for methods contained in the disallow parameter.
+// Since GET is always allowed, the supported parameters are POST,PATCH,DELETE.
+func (res *Resource) PartialCRUD(storage store.CRUD, disallow string) {
+	res.List(storage.List, true)
+	res.Post(storage.Save, !strings.Contains(disallow, post))
+	res.Get(storage.Get, true)
+	res.Patch(storage.Update, !strings.Contains(disallow, patch))
+	res.Delete(storage.Delete, !strings.Contains(disallow, delete))
+}
+}
 
-	res.addRoute(post, patRoot)
+// Action adds to the resource a custom action of the form:
+// POST /resources/:id/<action>
+func (res *Resource) Action(action string, storage store.Action, allow bool) {
+	matcher := path.Join(patID, action)
+
+	var handler = res.notAllowedHandler
+	if allow {
+		handler = func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			res.actionHandler(ctx, w, r, storage)
+		}
+	}
+
+	res.HandleFuncC(pat.Post(matcher), handler)
+	res.addRoute(post, matcher, allow)
 }
 
 // Get registers a `GET /resource/:id` handler for the resource
@@ -129,40 +141,74 @@ func (res *Resource) Get(storage store.Get) {
 	res.addRoute(get, patID)
 }
 
-// List registers a `GET /resource` handler for the resource
-func (res *Resource) List(storage store.List) {
-	res.HandleFuncC(
-		pat.Get(patRoot),
-		func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+// Post registers a `POST /resource` handler for the resource.
+func (res *Resource) Post(storage store.Save, allow bool) {
+	var handler = res.notAllowedHandler
+	if allow {
+		handler = func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			res.postHandler(ctx, w, r, storage)
+		}
+	}
+
+	res.HandleFuncC(pat.Post(patRoot), handler)
+	res.addRoute(post, patRoot, allow)
+}
+
+// Get registers a `GET /resource/:id` handler for the resource.
+func (res *Resource) Get(storage store.Get, allow bool) {
+	var handler = res.notAllowedHandler
+	if allow {
+		handler = func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			res.fetchHandler(ctx, w, r, storage)
+		}
+	}
+
+	res.HandleFuncC(pat.Get(patID), handler)
+	res.addRoute(head, patID, allow)
+	res.addRoute(get, patID, allow)
+}
+
+// List registers a `GET /resource` handler for the resource.
+func (res *Resource) List(storage store.List, allow bool) {
+	var handler = res.notAllowedHandler
+	if allow {
+		handler = func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 			res.listHandler(ctx, w, r, storage)
-		},
-	)
+		}
+	}
 
-	res.addRoute(get, patRoot)
+	res.HandleFuncC(pat.Get(patRoot), handler)
+	res.addRoute(head, patRoot, allow)
+	res.addRoute(get, patRoot, allow)
 }
 
-// Delete registers a `DELETE /resource/:id` handler for the resource
-func (res *Resource) Delete(storage store.Delete) {
-	res.HandleFuncC(
-		pat.Delete(patID),
-		func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-			res.deleteHandler(ctx, w, r, storage)
-		},
-	)
-
-	res.addRoute(delete, patID)
-}
-
-// Patch registers a `PATCH /resource/:id` handler for the resource
-func (res *Resource) Patch(storage store.Update) {
-	res.HandleFuncC(
-		pat.Patch(patID),
-		func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+// Patch registers a `PATCH /resource/:id` handler for the resource.
+func (res *Resource) Patch(storage store.Update, allow bool) {
+	var handler = res.notAllowedHandler
+	if allow {
+		handler = func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 			res.patchHandler(ctx, w, r, storage)
-		},
-	)
+		}
+	}
 
-	res.addRoute(patch, patID)
+	res.HandleFuncC(pat.Patch(patID), handler)
+	res.addRoute(patch, patID, allow)
+}
+
+// Delete registers a `DELETE /resource/:id` handler for the resource.
+func (res *Resource) Delete(storage store.Delete, allow bool) {
+	var handler = res.notAllowedHandler
+	if allow {
+		handler = func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			res.deleteHandler(ctx, w, r, storage)
+		}
+	}
+
+	res.HandleFuncC(pat.Delete(patID), handler)
+	res.addRoute(delete, patID, allow)
+}
+
+
 }
 
 // ToOne registers a `GET /resource/:id/(relationships/)<resourceType>` route which
@@ -236,19 +282,13 @@ func (res *Resource) relationshipHandler(
 	res.addRoute(get, relationshipMatcher)
 }
 
-// Action allows you to add custom actions to your resource types, it uses the
-// GET /(prefix/)resourceTypes/:id/<actionName> path format
-func (res *Resource) Action(actionName string, storage store.Get) {
-	matcher := path.Join(patID, actionName)
 
-	res.HandleFuncC(
-		pat.Get(matcher),
-		func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-			res.actionHandler(ctx, w, r, storage)
-		},
-	)
+// notAllowedHandler returns a 405 response with the Allow header.
+func (res *Resource) notAllowedHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Allow", res.allowHeader(ctx, r))
+	w.Header().Add("Content-Type", jsh.ContentType)
+	w.WriteHeader(http.StatusMethodNotAllowed)
 
-	res.addRoute(patch, matcher)
 }
 
 // POST /resources
@@ -274,7 +314,7 @@ func (res *Resource) postHandler(ctx context.Context, w http.ResponseWriter, r *
 }
 
 // GET /resources/:id
-func (res *Resource) getHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, storage store.Get) {
+func (res *Resource) fetchHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, storage store.Get) {
 	id := pat.Param(ctx, "id")
 
 	object, err := storage(ctx, id)
@@ -295,6 +335,29 @@ func (res *Resource) listHandler(ctx context.Context, w http.ResponseWriter, r *
 	}
 
 	SendHandler(ctx, w, r, list)
+}
+
+// PATCH /resources/:id
+func (res *Resource) patchHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, storage store.Update) {
+	parsedObject, parseErr := jsh.ParseObject(r)
+	if parseErr != nil && reflect.ValueOf(parseErr).IsNil() == false {
+		SendHandler(ctx, w, r, parseErr)
+		return
+	}
+
+	id := pat.Param(ctx, "id")
+	if id != parsedObject.ID {
+		SendHandler(ctx, w, r, jsh.ConflictError("", parsedObject.ID))
+		return
+	}
+
+	object, err := storage(ctx, parsedObject)
+	if err != nil && reflect.ValueOf(err).IsNil() == false {
+		SendHandler(ctx, w, r, err)
+		return
+	}
+
+	SendHandler(ctx, w, r, object)
 }
 
 // DELETE /resources/:id
@@ -375,4 +438,17 @@ func (res *Resource) RouteTree() string {
 	}
 
 	return routes
+}
+
+// allowHeader generates the Allow header value for the resource at the given request path.
+func (res *Resource) allowHeader(ctx context.Context, r *http.Request) string {
+	var methods, sep string
+	for _, route := range res.Routes {
+		ctx = pattern.SetPath(ctx, r.URL.Path)
+		if route.Allow && pat.New(route.Path).Match(ctx, r) != nil {
+			methods = fmt.Sprint(methods, sep, route.Method)
+			sep = ","
+		}
+	}
+	return methods
 }
