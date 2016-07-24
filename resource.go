@@ -29,6 +29,18 @@ const (
 // EnableClientGeneratedIDs is an option that allows consumers to allow for client generated IDs.
 var EnableClientGeneratedIDs bool
 
+// Route represents a resource route.
+type Route struct {
+	Method string
+	Path   string
+	Allow  bool
+}
+
+// String implements the Stringer interface for Route.
+func (r Route) String() string {
+	return fmt.Sprintf("%-7s - %s", r.Method, r.Path)
+}
+
 /*
 Resource holds the necessary state for creating a REST API endpoint for a
 given resource type. Will be accessible via `/<type>`.
@@ -55,7 +67,7 @@ type Resource struct {
 	// The singular name of the resource type("user", "post", etc)
 	Type string
 	// Routes is a list of routes registered to the resource
-	Routes []string
+	Routes []Route
 	// Map of relationships
 	Relationships map[string]Relationship
 }
@@ -74,8 +86,8 @@ func NewResource(resourceType string) *Resource {
 		// Type of the resource, makes no assumptions about plurality
 		Type:          resourceType,
 		Relationships: map[string]Relationship{},
-		// A list of registered routes, useful for debugging
-		Routes: []string{},
+		// A list of registered routes used for the OPTIONS HTTP method
+		Routes: []Route{},
 	}
 }
 
@@ -424,19 +436,21 @@ func (res *Resource) actionHandler(ctx context.Context, w http.ResponseWriter, r
 
 // addRoute adds the new method and route to a route Tree for debugging and
 // informational purposes.
-func (res *Resource) addRoute(method string, route string) {
-	res.Routes = append(res.Routes, fmt.Sprintf("%s - /%s%s", method, res.Type, route))
+func (res *Resource) addRoute(method string, route string, allow bool) {
+	res.Routes = append(res.Routes, Route{
+		Method: method,
+		Path:   fmt.Sprintf("/%s%s", res.Type, route),
+		Allow:  allow,
+	})
 }
 
 // RouteTree prints a recursive route tree based on what the resource, and
 // all subresources have registered
 func (res *Resource) RouteTree() string {
 	var routes string
-
 	for _, route := range res.Routes {
-		routes = strings.Join([]string{routes, route}, "\n")
+		routes = fmt.Sprintf("%s\n%s", routes, route)
 	}
-
 	return routes
 }
 
