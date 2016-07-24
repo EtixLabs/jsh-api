@@ -385,10 +385,20 @@ func (res *Resource) deleteHandler(ctx context.Context, w http.ResponseWriter, r
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// PATCH /resources/:id
-func (res *Resource) patchHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, storage store.Update) {
-	parsedObject, parseErr := jsh.ParseObject(r)
-	if parseErr != nil && reflect.ValueOf(parseErr).IsNil() == false {
+// POST /resources/:id/<action>
+func (res *Resource) actionHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, storage store.Action) {
+	response, err := storage(ctx, w, r)
+	if err != nil && reflect.ValueOf(err).IsNil() == false {
+		SendHandler(ctx, w, r, err)
+		return
+	}
+
+	// NOTE: Explicitly set status to 200 to avoid automatically setting it to 201 (default for POST)
+	if response != nil && response.Status == 0 {
+		response.Status = 200
+	}
+	SendHandler(ctx, w, r, response)
+}
 		SendHandler(ctx, w, r, parseErr)
 		return
 	}

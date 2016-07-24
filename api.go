@@ -3,13 +3,18 @@ package jshapi
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path"
+	"reflect"
 	"strings"
+
+	"golang.org/x/net/context"
 
 	"goji.io"
 	"goji.io/pat"
 
+	"github.com/EtixLabs/jsh-api/store"
 	"github.com/derekdowling/go-stdlogger"
 	"github.com/derekdowling/goji2-logger"
 )
@@ -32,7 +37,6 @@ var SendHandler = DefaultSender(log.New(os.Stderr, "jshapi: ", log.LstdFlags))
 New initializes a new top level API Resource without doing any additional setup.
 */
 func New(prefix string) *API {
-
 	// ensure that our top level prefix is "/" prefixed
 	if !strings.HasPrefix(prefix, "/") {
 		prefix = fmt.Sprintf("/%s", prefix)
@@ -63,7 +67,6 @@ The most basic implementation is:
 
 */
 func Default(prefix string, debug bool, logger std.Logger) *API {
-
 	api := New(prefix)
 	SendHandler = DefaultSender(logger)
 
@@ -77,7 +80,6 @@ func Default(prefix string, debug bool, logger std.Logger) *API {
 // Add implements mux support for a given resource which is effectively handled as:
 // pat.New("/(prefix/)resource.Plu*)
 func (a *API) Add(resource *Resource) {
-
 	// track our associated resources, will enable auto-generation docs later
 	a.Resources[resource.Type] = resource
 
@@ -94,9 +96,34 @@ func (a *API) Add(resource *Resource) {
 	a.Mux.HandleC(pat.New(idMatcher), resource)
 }
 
+func (a *API) Action(action string, storage store.Action) {
+	matcher := path.Join(a.prefix, action)
+
+	a.Mux.HandleFuncC(
+		pat.Post(matcher),
+		func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			a.actionHandler(ctx, w, r, storage)
+		},
+	)
+}
+
+// POST /<action>
+func (a *API) actionHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, storage store.Action) {
+	response, err := storage(ctx, w, r)
+	if err != nil && reflect.ValueOf(err).IsNil() == false {
+		SendHandler(ctx, w, r, err)
+		return
+	}
+
+	// NOTE: Explicitly set status to 200 to avoid automatically setting it to 201 (default for POST)
+	if response != nil && response.Status == 0 {
+		response.Status = 200
+	}
+	SendHandler(ctx, w, r, response)
+}
+
 // RouteTree prints out all accepted routes for the API that use jshapi implemented
-// ways of adding routes through resources: NewCRUDResource(), .Get(), .Post, .Delete(),
-// .Patch(), .List(), and .NewAction()
+// ways of adding routes through resources.
 func (a *API) RouteTree() string {
 	var routes string
 
