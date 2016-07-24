@@ -9,6 +9,7 @@ import (
 
 	"goji.io"
 	"goji.io/pat"
+	"goji.io/pattern"
 
 	"golang.org/x/net/context"
 
@@ -126,6 +127,73 @@ func (res *Resource) PartialCRUD(storage store.CRUD, disallow string) {
 	res.Patch(storage.Update, !strings.Contains(disallow, patch))
 	res.Delete(storage.Delete, !strings.Contains(disallow, delete))
 }
+
+/*
+ToOne is syntactic sugar for registering all JSON API routes for a to-one relationship:
+
+Registers handlers for:
+	GET    /resource/:id/relationship
+	GET    /resource/:id/relationships/relationship
+	PATCH  /resource/:id/relationships/relationship
+
+CRUD actions on a specific relationship "resourceType" object should be performed
+via it's own top level /<resourceType> jsh-api handler as per JSONAPI specification.
+*/
+func (res *Resource) ToOne(relationship string, storage store.ToOne) {
+	res.PartialToOne(relationship, storage, "")
+}
+
+// PartialToOne registers to-one relationships routes with OPTIONS and HEAD support.
+// It provides a handler that sends a 405 response for methods contained in the disallow parameter.
+// Since GET is always allowed, the only supported parameter is PATCH.
+func (res *Resource) PartialToOne(relationship string, storage store.ToOne, disallow string) {
+	matcher := fmt.Sprintf("%s/%s", patID, relationship)
+	res.Options(matcher)
+	res.GetRelated(storage.GetResource, matcher, true)
+
+	relationshipMatcher := fmt.Sprintf("%s/relationships/%s", patID, relationship)
+	res.Options(relationshipMatcher)
+	res.GetRelationship(storage.Get, relationshipMatcher, true)
+	res.PatchOne(storage.Update, relationshipMatcher, !strings.Contains(disallow, patch))
+
+	res.Relationships[relationship] = ToOne
+}
+
+/*
+ToMany is syntactic sugar for registering all JSON API routes for a to-many relationship:
+
+Registers handlers for:
+	GET    /resource/:id/relationship
+	GET    /resource/:id/relationships/relationship
+	PATCH  /resource/:id/relationships/relationship
+	POST   /resource/:id/relationships/relationship
+	DELETE /resource/:id/relationships/relationship
+
+CRUD actions on a specific relationship "resourceType" object should be performed
+via it's own top level /<resourceType> jsh-api handler as per JSONAPI specification.
+*/
+func (res *Resource) ToMany(relationship string, storage store.ToMany) {
+	res.PartialToMany(relationship, storage, "")
+}
+
+// PartialToMany registers to-many relationships routes with OPTIONS and HEAD support.
+// It provides a handler that sends a 405 response for methods contained in the disallow parameter.
+// Since GET is always allowed, the supported parameters are POST,PATCH,DELETE.
+func (res *Resource) PartialToMany(relationship string, storage store.ToMany, disallow string) {
+	// GET /resources/:id/<relationship>
+	matcher := fmt.Sprintf("%s/%s", patID, relationship)
+	res.Options(matcher)
+	res.ListRelated(storage.ListResources, matcher, true)
+
+	// GET /resources/:id/relationships/<relationship>
+	relationshipMatcher := fmt.Sprintf("%s/relationships/%s", patID, relationship)
+	res.Options(relationshipMatcher)
+	res.ListRelationships(storage.List, relationshipMatcher, true)
+	res.PostMany(storage.Save, relationshipMatcher, !strings.Contains(disallow, post))
+	res.PatchMany(storage.Update, relationshipMatcher, !strings.Contains(disallow, patch))
+	res.DeleteMany(storage.Delete, relationshipMatcher, !strings.Contains(disallow, delete))
+
+	res.Relationships[relationship] = ToMany
 }
 
 // Action adds to the resource a custom action of the form:
@@ -223,86 +291,124 @@ func (res *Resource) Delete(storage store.Delete, allow bool) {
 	res.addRoute(delete, patID, allow)
 }
 
+// ToOne relationship
 
-}
-
-// ToOne registers a `GET /resource/:id/(relationships/)<resourceType>` route which
-// returns a "resourceType" in a One-To-One relationship between the parent resource
-// type and "resourceType" as specified here. The "/relationships/" uri component is
-// optional.
-//
-// CRUD actions on a specific relationship "resourceType" object should be performed
-// via it's own top level /<resourceType> jsh-api handler as per JSONAPI specification.
-func (res *Resource) ToOne(
-	resourceType string,
-	storage store.Get,
-) {
-	resourceType = strings.TrimSuffix(resourceType, "s")
-
-	res.relationshipHandler(
-		resourceType,
-		func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-			res.getHandler(ctx, w, r, storage)
-		},
-	)
-
-	res.Relationships[resourceType] = ToOne
-}
-
-// ToMany registers a `GET /resource/:id/(relationships/)<resourceType>s` route which
-// returns a list of "resourceType"s in a One-To-Many relationship with the parent resource.
-// The "/relationships/" uri component is optional.
-//
-// CRUD actions on a specific relationship "resourceType" object should be performed
-// via it's own top level /<resourceType> jsh-api handler as per JSONAPI specification.
-func (res *Resource) ToMany(
-	resourceType string,
-	storage store.ToMany,
-) {
-	if !strings.HasSuffix(resourceType, "s") {
-		resourceType = fmt.Sprintf("%ss", resourceType)
+// GetRelated registers a `GET /resources/:id/<relationship>` handler for the resource relationship.
+func (res *Resource) GetRelated(storage store.Get, matcher string, allow bool) {
+	var handler = res.notAllowedHandler
+	if allow {
+		handler = func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			res.fetchHandler(ctx, w, r, storage)
+		}
 	}
 
-	res.relationshipHandler(
-		resourceType,
-		func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-			res.toManyHandler(ctx, w, r, storage)
-		},
-	)
-
-	res.Relationships[resourceType] = ToMany
+	res.HandleFuncC(pat.Get(matcher), handler)
+	res.addRoute(head, matcher, allow)
+	res.addRoute(get, matcher, allow)
 }
 
-// relationshipHandler does the dirty work of setting up both routes for a single
-// relationship
-func (res *Resource) relationshipHandler(
-	resourceType string,
-	handler goji.HandlerFunc,
-) {
+// GetRelationship registers a `GET /resources/:id/relationships/<relationship>` handler for the resource relationship.
+func (res *Resource) GetRelationship(storage store.ToOneGet, matcher string, allow bool) {
+	var handler = res.notAllowedHandler
+	if allow {
+		handler = func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			res.fetchIDHandler(ctx, w, r, storage)
+		}
+	}
 
-	// handle /.../:id/<resourceType>
-	matcher := fmt.Sprintf("%s/%s", patID, resourceType)
-	res.HandleFuncC(
-		pat.Get(matcher),
-		handler,
-	)
-	res.addRoute(get, matcher)
-
-	// handle /.../:id/relationships/<resourceType>
-	relationshipMatcher := fmt.Sprintf("%s/relationships/%s", patID, resourceType)
-	res.HandleFuncC(
-		pat.Get(relationshipMatcher),
-		handler,
-	)
-	res.addRoute(get, relationshipMatcher)
+	res.HandleFuncC(pat.Get(matcher), handler)
+	res.addRoute(head, matcher, allow)
+	res.addRoute(get, matcher, allow)
 }
 
+// PatchOne registers a `PATCH /resources/:id/relationships/<relationship>` handler for the resource relationship.
+func (res *Resource) PatchOne(storage store.ToOneUpdate, matcher string, allow bool) {
+	var handler = res.notAllowedHandler
+	if allow {
+		handler = func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			res.patchOneHandler(ctx, w, r, storage)
+		}
+	}
+
+	res.HandleFuncC(pat.Patch(matcher), handler)
+	res.addRoute(patch, matcher, allow)
+}
+
+// ToMany relationship
+
+// ListRelated registers a `GET /resources/:id/<relationship>` handler for the resource relationships.
+func (res *Resource) ListRelated(storage store.ToManyListResources, matcher string, allow bool) {
+	var handler = res.notAllowedHandler
+	if allow {
+		handler = func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			res.listManyHandler(ctx, w, r, storage)
+		}
+	}
+
+	res.HandleFuncC(pat.Get(matcher), handler)
+	res.addRoute(head, matcher, allow)
+	res.addRoute(get, matcher, allow)
+}
+
+// ListRelationships registers a `GET /resources/:id/<relationship>` handler for the resource relationships.
+func (res *Resource) ListRelationships(storage store.ToManyList, matcher string, allow bool) {
+	var handler = res.notAllowedHandler
+	if allow {
+		handler = func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			res.listIDHandler(ctx, w, r, storage)
+		}
+	}
+
+	res.HandleFuncC(pat.Get(matcher), handler)
+	res.addRoute(head, matcher, allow)
+	res.addRoute(get, matcher, allow)
+}
+
+// PatchMany registers a `PATCH /resources/:id/relationships/<relationship>` handler for the resource relationships.
+func (res *Resource) PatchMany(storage store.ToManyUpdate, matcher string, allow bool) {
+	var handler = res.notAllowedHandler
+	if allow {
+		handler = func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			res.patchManyHandler(ctx, w, r, storage)
+		}
+	}
+
+	res.HandleFuncC(pat.Patch(matcher), handler)
+	res.addRoute(patch, matcher, allow)
+}
+
+// PostMany registers a `POST /resources/:id/relationships/<relationship>` handler for the resource relationships.
+func (res *Resource) PostMany(storage store.ToManyUpdate, matcher string, allow bool) {
+	var handler = res.notAllowedHandler
+	if allow {
+		handler = func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			res.updateManyHandler(ctx, w, r, storage)
+		}
+	}
+
+	res.HandleFuncC(pat.Post(matcher), handler)
+	res.addRoute(post, matcher, allow)
+}
+
+// DeleteMany registers a `DELETE /resources/:id/relationships/<relationship>` handler for the resource relationships.
+func (res *Resource) DeleteMany(storage store.ToManyUpdate, matcher string, allow bool) {
+	var handler = res.notAllowedHandler
+	if allow {
+		handler = func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			res.updateManyHandler(ctx, w, r, storage)
+		}
+	}
+
+	res.HandleFuncC(pat.Delete(matcher), handler)
+	res.addRoute(delete, matcher, allow)
+}
 
 // notAllowedHandler returns a 405 response with the Allow header.
 func (res *Resource) notAllowedHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Allow", res.allowHeader(ctx, r))
 	w.Header().Add("Content-Type", jsh.ContentType)
 	w.WriteHeader(http.StatusMethodNotAllowed)
+}
 
 // OPTIONS
 func (res *Resource) optionsHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -407,17 +513,32 @@ func (res *Resource) actionHandler(ctx context.Context, w http.ResponseWriter, r
 	}
 	SendHandler(ctx, w, r, response)
 }
+
+// PATCH /resources/:id/relationships/<relationship> for a to-one relationship
+func (res *Resource) patchOneHandler(ctx context.Context, w http.ResponseWriter,
+	r *http.Request, storage store.ToOneUpdate) {
+	relationship, parseErr := jsh.ParseRelationship(r)
+	if parseErr != nil {
 		SendHandler(ctx, w, r, parseErr)
 		return
 	}
 
 	id := pat.Param(ctx, "id")
-	if id != parsedObject.ID {
-		SendHandler(ctx, w, r, jsh.ConflictError("", parsedObject.ID))
+	relationship, err := storage(ctx, id, relationship)
+	if err != nil && reflect.ValueOf(err).IsNil() == false {
+		SendHandler(ctx, w, r, err)
 		return
 	}
 
-	object, err := storage(ctx, parsedObject)
+	SendHandler(ctx, w, r, relationship)
+}
+
+// GET /resources/:id/relationships/<relationship>
+func (res *Resource) fetchIDHandler(ctx context.Context, w http.ResponseWriter,
+	r *http.Request, storage store.ToOneGet) {
+	id := pat.Param(ctx, "id")
+
+	object, err := storage(ctx, id)
 	if err != nil && reflect.ValueOf(err).IsNil() == false {
 		SendHandler(ctx, w, r, err)
 		return
@@ -426,8 +547,9 @@ func (res *Resource) actionHandler(ctx context.Context, w http.ResponseWriter, r
 	SendHandler(ctx, w, r, object)
 }
 
-// GET /resources/:id/(relationships/)<resourceType>s
-func (res *Resource) toManyHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, storage store.ToMany) {
+// GET /resources/:id/<relationship>
+func (res *Resource) listManyHandler(ctx context.Context, w http.ResponseWriter,
+	r *http.Request, storage store.ToManyListResources) {
 	id := pat.Param(ctx, "id")
 
 	list, err := storage(ctx, id)
@@ -439,17 +561,61 @@ func (res *Resource) toManyHandler(ctx context.Context, w http.ResponseWriter, r
 	SendHandler(ctx, w, r, list)
 }
 
-// All HTTP Methods for /resources/:id/<mutate>
-func (res *Resource) actionHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, storage store.Get) {
+// GET /resources/:id/relationships/<relationship>
+func (res *Resource) listIDHandler(ctx context.Context, w http.ResponseWriter,
+	r *http.Request, storage store.ToManyList) {
 	id := pat.Param(ctx, "id")
 
-	response, err := storage(ctx, id)
+	list, err := storage(ctx, id)
 	if err != nil && reflect.ValueOf(err).IsNil() == false {
 		SendHandler(ctx, w, r, err)
 		return
 	}
 
-	SendHandler(ctx, w, r, response)
+	SendHandler(ctx, w, r, list)
+}
+
+// PATCH /resources/:id/relationships/<relationship> for a to-many relationship
+func (res *Resource) patchManyHandler(ctx context.Context, w http.ResponseWriter,
+	r *http.Request, storage store.ToManyUpdate) {
+	list, parseErr := jsh.ParseRelationshipList(r)
+	if parseErr != nil {
+		SendHandler(ctx, w, r, parseErr)
+		return
+	}
+
+	id := pat.Param(ctx, "id")
+	list, err := storage(ctx, id, list)
+	if err != nil && reflect.ValueOf(err).IsNil() == false {
+		SendHandler(ctx, w, r, err)
+		return
+	}
+
+	SendHandler(ctx, w, r, list)
+}
+
+// POST/DELETE /resources/:id/relationships/<relationship> for a to-many relationship
+func (res *Resource) updateManyHandler(ctx context.Context, w http.ResponseWriter,
+	r *http.Request, storage store.ToManyUpdate) {
+	list, parseErr := jsh.ParseRelationshipList(r)
+	if parseErr != nil {
+		SendHandler(ctx, w, r, parseErr)
+		return
+	}
+
+	if len(list) == 0 {
+		SendHandler(ctx, w, r, jsh.BadRequestError("Invalid document", "Missing description of changes"))
+		return
+	}
+
+	id := pat.Param(ctx, "id")
+	list, err := storage(ctx, id, list)
+	if err != nil && reflect.ValueOf(err).IsNil() == false {
+		SendHandler(ctx, w, r, err)
+		return
+	}
+
+	SendHandler(ctx, w, r, list)
 }
 
 // addRoute adds the new method and route to a route Tree for debugging and
