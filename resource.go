@@ -350,7 +350,7 @@ func (res *Resource) ListRelated(storage store.ToManyListResources, matcher stri
 	res.addRoute(get, matcher, allow)
 }
 
-// ListRelationships registers a `GET /resources/:id/<relationship>` handler for the resource relationships.
+// ListRelationships registers a `GET /resources/:id/relationships/<relationship>` handler for the resource relationships.
 func (res *Resource) ListRelationships(storage store.ToManyList, matcher string, allow bool) {
 	var handler = res.notAllowedHandler
 	if allow {
