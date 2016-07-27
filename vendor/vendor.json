@@ -3,16 +3,16 @@
 	"ignore": "test",
 	"package": [
 		{
-			"checksumSHA1": "oJsWHcBaNWdVcr6dwuDZo692m44=",
+			"checksumSHA1": "OhqbeLXAMN3ls/kx/Es1p+uDTqI=",
 			"path": "github.com/EtixLabs/go-json-spec-handler",
-			"revision": "30ece652a4aa6c34838bc73a4c3956c112c53154",
-			"revisionTime": "2016-06-12T19:20:22Z"
+			"revision": "5bf7a6941304ccb6c5632d659da04b3fa50003bd",
+			"revisionTime": "2016-07-27T09:27:09Z"
 		},
 		{
-			"checksumSHA1": "4A+c5sB6qvUVxWbBx9meCFSOugg=",
+			"checksumSHA1": "EmAUAcV2fVSD1XMOrF71WOll5j4=",
 			"path": "github.com/EtixLabs/go-json-spec-handler/client",
-			"revision": "30ece652a4aa6c34838bc73a4c3956c112c53154",
-			"revisionTime": "2016-06-12T19:20:22Z"
+			"revision": "5bf7a6941304ccb6c5632d659da04b3fa50003bd",
+			"revisionTime": "2016-07-27T09:27:09Z"
 		},
 		{
 			"checksumSHA1": "JiOPmQBuMl6qLJPLfmQxNX2eXOc=",
