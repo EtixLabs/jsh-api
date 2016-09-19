@@ -102,7 +102,7 @@ resource.Action("reset", resetAction)
 
 ## Working With Storage Interfaces
 
-Below is a basic example of how one might implement parts of a [CRUD Storage](https://godoc.org/github.com/derekdowling/jsh-api/store#CRUD)
+Below is a basic example of how one might implement parts of a [CRUD Storage](https://godoc.org/github.com/EtixLabs/jsh-api/store#CRUD)
 interface for a basic user resource using [jsh](https://godoc.org/github.com/derekdowling/go-json-spec-handler)
 for Save and Update. This should give you a pretty good idea of how easy it is to
 implement the Storage driver with jsh.

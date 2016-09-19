@@ -3,14 +3,8 @@ package jshapi
 import (
 	"log"
 
-	"github.com/derekdowling/go-json-spec-handler"
+	"github.com/EtixLabs/go-json-spec-handler"
 )
-
-const testType = "test"
-
-var testObjAttrs = map[string]string{
-	"foo": "bar",
-}
 
 // NewMockResource builds a mock API endpoint that can perform basic CRUD actions:
 //

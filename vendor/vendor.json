@@ -1,0 +1,109 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "OhqbeLXAMN3ls/kx/Es1p+uDTqI=",
+			"path": "github.com/EtixLabs/go-json-spec-handler",
+			"revision": "5bf7a6941304ccb6c5632d659da04b3fa50003bd",
+			"revisionTime": "2016-07-27T09:27:09Z"
+		},
+		{
+			"checksumSHA1": "EmAUAcV2fVSD1XMOrF71WOll5j4=",
+			"path": "github.com/EtixLabs/go-json-spec-handler/client",
+			"revision": "5bf7a6941304ccb6c5632d659da04b3fa50003bd",
+			"revisionTime": "2016-07-27T09:27:09Z"
+		},
+		{
+			"checksumSHA1": "JiOPmQBuMl6qLJPLfmQxNX2eXOc=",
+			"path": "github.com/asaskevich/govalidator",
+			"revision": "edd46cdac249b001c7b7d88c6d43993ea875e8d8",
+			"revisionTime": "2015-11-08T18:55:01Z"
+		},
+		{
+			"checksumSHA1": "RB5ubAJg4rfXOk18KoCrW0Nedyw=",
+			"path": "github.com/derekdowling/go-stdlogger",
+			"revision": "cfa80b78b82f8d241ceece0b733b1161bb6a885c",
+			"revisionTime": "2015-12-18T18:49:58Z"
+		},
+		{
+			"checksumSHA1": "LSxdYDtGuAL84x5MDwy6qJVPwoY=",
+			"path": "github.com/derekdowling/goji2-logger",
+			"revision": "148764a2aea6cdd93a6776e20da13f6dfa38775f",
+			"revisionTime": "2016-01-16T00:17:30Z"
+		},
+		{
+			"checksumSHA1": "qt9AtSGLIyVzsUF6YhPkP6NDszc=",
+			"path": "github.com/jtolds/gls",
+			"revision": "9a4a02dbe491bef4bab3c24fd9f3087d6c4c6690",
+			"revisionTime": "2015-04-01T06:43:43Z"
+		},
+		{
+			"checksumSHA1": "4z1wlRQPCZaCkW+wFnyynKWzBLY=",
+			"path": "github.com/smartystreets/assertions",
+			"revision": "5de9043ec1a39cc97edc838ef7236538a55b30a4",
+			"revisionTime": "2016-01-19T22:17:43Z"
+		},
+		{
+			"checksumSHA1": "QCsUvPHx/Ifqm+sJmocjSvePAIc=",
+			"path": "github.com/smartystreets/assertions/internal/oglematchers",
+			"revision": "5de9043ec1a39cc97edc838ef7236538a55b30a4",
+			"revisionTime": "2016-01-19T22:17:43Z"
+		},
+		{
+			"checksumSHA1": "fQeXVv5U9dlo3ufH2vjk1GNf4Lo=",
+			"path": "github.com/smartystreets/goconvey/convey",
+			"revision": "995f5b2e021c69b8b028ba6d0b05c1dd500783db",
+			"revisionTime": "2016-01-19T22:16:36Z"
+		},
+		{
+			"checksumSHA1": "9LakndErFi5uCXtY1KWl0iRnT4c=",
+			"path": "github.com/smartystreets/goconvey/convey/gotest",
+			"revision": "995f5b2e021c69b8b028ba6d0b05c1dd500783db",
+			"revisionTime": "2016-01-19T22:16:36Z"
+		},
+		{
+			"checksumSHA1": "abzHJ7H+qXomUFCgEAZ5QXO+S5g=",
+			"path": "github.com/smartystreets/goconvey/convey/reporting",
+			"revision": "995f5b2e021c69b8b028ba6d0b05c1dd500783db",
+			"revisionTime": "2016-01-19T22:16:36Z"
+		},
+		{
+			"checksumSHA1": "g9hmnkrmD9/3bVFYssjA1mu+r2o=",
+			"path": "github.com/zenazn/goji/web/mutil",
+			"revision": "64eb34159fe53473206c2b3e70fe396a639452f2",
+			"revisionTime": "2016-05-07T20:19:45Z"
+		},
+		{
+			"checksumSHA1": "mOUDsWfYLlh8f6ekwyIUo3+4xJI=",
+			"path": "goji.io",
+			"revision": "e355964ac565b94cf0fc7f218346626529125086",
+			"revisionTime": "2016-05-07T21:13:57Z"
+		},
+		{
+			"checksumSHA1": "Jf3C/refSMB2wVYGp1pssKXVNcI=",
+			"path": "goji.io/internal",
+			"revision": "e355964ac565b94cf0fc7f218346626529125086",
+			"revisionTime": "2016-05-07T21:13:57Z"
+		},
+		{
+			"checksumSHA1": "gHp/Mv7vgZWs7iq/F0YHnWgEotQ=",
+			"path": "goji.io/pat",
+			"revision": "e355964ac565b94cf0fc7f218346626529125086",
+			"revisionTime": "2016-05-07T21:13:57Z"
+		},
+		{
+			"checksumSHA1": "z2zVlHamw4ufyuSaf49reuusrmg=",
+			"path": "goji.io/pattern",
+			"revision": "e355964ac565b94cf0fc7f218346626529125086",
+			"revisionTime": "2016-05-07T21:13:57Z"
+		},
+		{
+			"checksumSHA1": "9jjO5GjLa0XF/nfWihF02RoH4qc=",
+			"path": "golang.org/x/net/context",
+			"revision": "c4c3ea71919de159c9e246d7be66deb7f0a39a58",
+			"revisionTime": "2016-05-27T23:48:58Z"
+		}
+	],
+	"rootPath": "github.com/EtixLabs/jsh-api"
+}

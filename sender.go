@@ -2,8 +2,9 @@ package jshapi
 
 import (
 	"net/http"
+	"reflect"
 
-	"github.com/derekdowling/go-json-spec-handler"
+	"github.com/EtixLabs/go-json-spec-handler"
 	"github.com/derekdowling/go-stdlogger"
 	"golang.org/x/net/context"
 )
@@ -20,6 +21,11 @@ in the process of sending a response.
 */
 func DefaultSender(logger std.Logger) Sender {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request, sendable jsh.Sendable) {
+		rv := reflect.ValueOf(sendable)
+		if (rv.Kind() == reflect.Ptr || rv.Kind() == reflect.Slice) && rv.IsNil() {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		sendableError, isType := sendable.(jsh.ErrorType)
 		if isType && sendableError.StatusCode() >= 500 {
 			logger.Printf("Returning ISE: %s\n", sendableError.Error())
